@@ -145,17 +145,26 @@
                               depth border format type (cffi:null-pointer))))))
 
 (defun tex-image-2d (target level internal-format width height border format
-                     type data)
+                     type data &key raw)
+  ;; if RAW is true, assume DATA is an (UNSIGNED-BYTE 8) vector containing
+  ;; appropriately formatted data for specified TYPE
   (let ((internal-size (internal-format->int internal-format)))
-    (if (pointerp data)
-        (%gl:tex-image-2d target level internal-size width height border format
-                          type data)
-        (if data
-            (with-pixel-array (array type data)
-              (%gl:tex-image-2d target level internal-size width height border
-                                format type array))
-            (%gl:tex-image-2d target level internal-size width height border
-                              format type (cffi:null-pointer))))))
+    (cond
+      ((pointerp data)
+       (%gl:tex-image-2d target level internal-size width height border format
+                         type data))
+      ((and data raw)
+       (check-type data (simple-array (unsigned-byte 8) (*)))
+       (with-pixel-array (array :unsigned-byte data)
+         (%gl:tex-image-2d target level internal-size width height border
+                           format type array)))
+      (data
+       (with-pixel-array (array type data)
+         (%gl:tex-image-2d target level internal-size width height border
+                           format type array)))
+      (t
+       (%gl:tex-image-2d target level internal-size width height border
+                         format type (cffi:null-pointer))))))
 
 (defun tex-image-1d (target level internal-format width border format type data)
   (let ((internal-size (internal-format->int internal-format)))
@@ -319,6 +328,11 @@
     (loop for i below count
           collecting (mem-aref texture-array '%gl:uint i))))
 
+(defun gen-texture ()
+  (with-foreign-object (array '%gl:uint 1)
+    (%gl:gen-textures 1 array)
+    (mem-aref array '%gl:uint 0)))
+
 (import-export %gl:bind-sampler)
 
 (defun delete-sampler (samplers)
@@ -331,6 +345,10 @@
     (loop for i below count
           collecting (mem-aref sampler-array '%gl:uint i))))
 
+(defun gen-sampler ()
+  (with-foreign-object (array '%gl:uint 1)
+    (%gl:gen-samplers 1 array)
+    (mem-aref array '%gl:uint 0)))
 
 
 ;;; The following two functions look awkward to use, so we'll provide the two

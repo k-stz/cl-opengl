@@ -134,6 +134,11 @@
     (loop for i below count
           collecting (mem-aref buffer-array '%gl:uint i))))
 
+(defun gen-buffer ()
+  (with-foreign-object (array '%gl:uint 1)
+    (%gl:gen-buffers 1 array)
+    (mem-aref array '%gl:uint 0)))
+
 (import-export %gl:map-buffer
                %gl:unmap-buffer)
 
@@ -168,7 +173,7 @@
   (destructuring-bind (array-type &rest rest &key type components
                                   &allow-other-keys)
       clause
-    (let ((func-name (symbolicate-package "%GL" array-type "-POINTER"))
+    (let ((func-name (symbolicate-package '#:%gl array-type '#:-pointer))
           (gl-type (cffi-type-to-gl type))
           (address-expr `(inc-pointer ,psym ,offset))
           (size (length components)))
@@ -771,4 +776,3 @@ Tries to optimize case where matrices are (SIMPLE-ARRAY SINGLE-FLOAT (~s))."
 ;;; 2.15.4 Shader Execution
 
 (import-export %gl:validate-program)
-
